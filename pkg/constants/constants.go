@@ -27,4 +27,5 @@ const (
 	DockerProviderName     = "docker"
 	AWSProviderName        = "aws"
 	TinkerbellProviderName = "tinkerbell"
+	MicrovmProviderName    = "microvm"
 )

@@ -142,6 +142,39 @@ func generateClusterConfig(clusterName string) error {
 		} else {
 			return fmt.Errorf("The tinkerbell infrastructure provider is still in development!")
 		}
+	case constants.MicrovmProviderName:
+		if features.IsActive(features.MicrovmProvider()) {
+			clusterConfigOpts = append(clusterConfigOpts, v1alpha1.WithClusterEndpoint())
+			datacenterConfig := v1alpha1.NewMicrovmDatacenterConfigGenerate(clusterName)
+			clusterConfigOpts = append(clusterConfigOpts, v1alpha1.WithDatacenterRef(datacenterConfig))
+			clusterConfigOpts = append(clusterConfigOpts,
+				v1alpha1.ControlPlaneConfigCount(1),
+				v1alpha1.WorkerNodeConfigCount(1),
+			)
+			dcyaml, err := yaml.Marshal(datacenterConfig)
+			if err != nil {
+				return fmt.Errorf("error outputting yaml: %v", err)
+			}
+			datacenterYaml = dcyaml
+
+			cpMachineConfig := v1alpha1.NewMicrovmMachineConfigGenerate(clusterName + "-cp")
+			workerMachineConfig := v1alpha1.NewMicrovmMachineConfigGenerate(clusterName)
+			clusterConfigOpts = append(clusterConfigOpts,
+				v1alpha1.WithCPMachineGroupRef(cpMachineConfig),
+				v1alpha1.WithWorkerMachineGroupRef(workerMachineConfig),
+			)
+			cpMcYaml, err := yaml.Marshal(cpMachineConfig)
+			if err != nil {
+				return fmt.Errorf("error outputting yaml: %v", err)
+			}
+			workerMcYaml, err := yaml.Marshal(workerMachineConfig)
+			if err != nil {
+				return fmt.Errorf("error outputting yaml: %v", err)
+			}
+			machineGroupYaml = append(machineGroupYaml, cpMcYaml, workerMcYaml)
+		} else {
+			return fmt.Errorf("The microvm infrastructure provider is still in development!")
+		}
 	default:
 		return fmt.Errorf("not a valid provider")
 	}

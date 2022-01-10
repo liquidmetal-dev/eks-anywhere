@@ -10,6 +10,7 @@ import (
 	"github.com/aws/eks-anywhere/pkg/filewriter"
 	"github.com/aws/eks-anywhere/pkg/providers"
 	"github.com/aws/eks-anywhere/pkg/providers/docker"
+	"github.com/aws/eks-anywhere/pkg/providers/microvm"
 	"github.com/aws/eks-anywhere/pkg/providers/tinkerbell"
 	"github.com/aws/eks-anywhere/pkg/providers/vsphere"
 )
@@ -20,6 +21,7 @@ type ProviderFactory struct {
 	VSphereGovcClient         vsphere.ProviderGovcClient
 	VSphereKubectlClient      vsphere.ProviderKubectlClient
 	TinkerbellKubectlClient   tinkerbell.ProviderKubectlClient
+	MicrovmKubectlClient      microvm.ProviderKubectlClient
 	Writer                    filewriter.FileWriter
 	ClusterResourceSetManager vsphere.ClusterResourceSetManager
 }
@@ -46,6 +48,16 @@ func (p *ProviderFactory) BuildProvider(clusterConfigFileName string, clusterCon
 			return nil, fmt.Errorf("unable to get machine config from file %s: %v", clusterConfigFileName, err)
 		}
 		return tinkerbell.NewProvider(datacenterConfig, machineConfigs, clusterConfig, p.TinkerbellKubectlClient, time.Now, hardwareConfigFile), nil
+	case v1alpha1.MicrovmDatacenterKind:
+		datacenterConfig, err := v1alpha1.GetMicrovmDatacenterConfig(clusterConfigFileName)
+		if err != nil {
+			return nil, fmt.Errorf("unable to get datacenter config from file %s: %v", clusterConfigFileName, err)
+		}
+		machineConfigs, err := v1alpha1.GetMicrovmMachineConfigs(clusterConfigFileName)
+		if err != nil {
+			return nil, fmt.Errorf("unable to get machine config from file %s: %v", clusterConfigFileName, err)
+		}
+		return microvm.NewProvider(datacenterConfig, machineConfigs, clusterConfig, p.TinkerbellKubectlClient, time.Now), nil
 	case v1alpha1.DockerDatacenterKind:
 		datacenterConfig, err := v1alpha1.GetDockerDatacenterConfig(clusterConfigFileName)
 		if err != nil {

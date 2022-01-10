@@ -1,0 +1,94 @@
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: Cluster
+metadata:
+  labels:
+    cluster.x-k8s.io/cluster-name: {{.clusterName}}
+  name: {{.clusterName}}
+  namespace: {{.eksaSystemNamespace}}
+spec:
+  clusterNetwork:
+    pods:
+      cidrBlocks: {{.podCidrs}}
+    services: {{.serviceCidrs}}
+  controlPlaneEndpoint:
+    host: {{.serviceCidrs}}
+    port: 6443
+  infrastructureRef:
+    apiVersion: infrastructure.cluster.x-k8s.io/v1alpha1
+    kind: MicrovmCluster
+    name: {.clusterName}}
+  controlPlaneRef:
+    kind: KubeadmControlPlane
+    apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+    name: {.clusterName}}
+---
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha1
+kind: MicrovmCluster
+metadata:
+  name: {.clusterName}}
+  namespace: {{.eksaSystemNamespace}}
+spec:
+  controlPlaneEndpoint:
+    host: {{.serviceCidrs}}
+    port: 6443
+  placement:
+    staticPool:
+      hosts:
+      - endpoint: {{.flintlockurl}}
+        controlplaneAllowed: true
+---
+kind: KubeadmControlPlane
+apiVersion: controlplane.cluster.x-k8s.io/v1beta1
+metadata:
+  name: {{.clusterName}}
+  namespace: {{.eksaSystemNamespace}}
+spec:
+  replicas: {{.controlPlaneReplicas}}
+  version: {{.kubernetesVersion}}
+  machineTemplate:
+    infrastructureRef:
+      kind: MicrovmMachineTemplate
+      apiVersion: infrastructure.cluster.x-k8s.io/v1alpha1
+      name: {{.controlPlaneTemplateName}}
+  kubeadmConfigSpec:
+    initConfiguration:
+      nodeRegistration:
+        kubeletExtraArgs:
+          provider-id: "PROVIDER_ID"
+    clusterConfiguration: {}
+    joinConfiguration:
+      nodeRegistration:
+        kubeletExtraArgs:
+          provider-id: "PROVIDER_ID"
+        ignorePreflightErrors:
+         - DirAvailable--etc-kubernetes-manifests
+    preKubeadmCommands:
+    - mkdir -p /etc/kubernetes/manifests && ctr images pull ghcr.io/kube-vip/kube-vip:v0.4.0 && ctr run --rm --net-host ghcr.io/kube-vip/kube-vip:v0.4.0 vip /kube-vip manifest pod --arp --interface $(ip -4 -j route list default | jq -r .[0].dev) --address 192.168.9.9 --controlplane --leaderElection > /etc/kubernetes/manifests/kube-vip.yaml
+    users:
+    - name: {{.controlPlaneSshUsername}}
+      sshAuthorizedKeys:
+      - '{{.controlPlaneSshAuthorizedKey}}'
+      sudo: ALL=(ALL) NOPASSWD:ALL
+    format: {{.format}}
+---
+kind: MicrovmMachineTemplate
+apiVersion: infrastructure.cluster.x-k8s.io/v1alpha1
+metadata:
+  name: {{.controlPlaneTemplateName}}
+  namespace: {{.eksaSystemNamespace}}
+spec:
+  template:
+    spec:
+      vcpu: 2
+      memoryMb: 2048
+      rootVolume:
+        id: root
+        image: docker.io/richardcase/capmvm-kubernetes:1.21.8
+        mountPoint: "/"
+      kernel:
+        filename: "boot/vmlinux"
+        image: docker.io/richardcase/flintlock-kernel:5.10.77
+      kernelCmdline: console=ttyS0 reboot=k panic=1 pci=off i8042.noaux i8042.nomux i8042.nopnp i8042.dumbkbd ds=nocloud-net;s=http://169.254.169.254/latest/
+      networkInterfaces:
+      - guestDeviceName: "eth1"
+        type: "macvtap"

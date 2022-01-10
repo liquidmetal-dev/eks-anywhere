@@ -4,6 +4,7 @@ const (
 	AwsIamAuthenticatorEnvVar = "AWS_IAM_AUTHENTICATOR"
 	TaintsSupportEnvVar       = "TAINTS_SUPPORT"
 	TinkerbellProviderEnvVar  = "TINKERBELL_PROVIDER"
+	MicrovmProviderEnvVar     = "MICROVM_PROVIDER"
 	FullLifecycleAPIEnvVar    = "FULL_LIFECYCLE_API"
 	FullLifecycleGate         = "FullLifecycleAPI"
 	V1beta1BundleRelease      = "V1BETA1_BUNDLE"
@@ -47,6 +48,13 @@ func TinkerbellProvider() Feature {
 	return Feature{
 		Name:     "Tinkerbell provider support",
 		IsActive: globalFeatures.isActiveForEnvVar(TinkerbellProviderEnvVar),
+	}
+}
+
+func MicrovmProvider() Feature {
+	return Feature{
+		Name:     "Microvm provider support",
+		IsActive: globalFeatures.isActiveForEnvVar(MicrovmProviderEnvVar),
 	}
 }
 

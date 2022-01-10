@@ -76,6 +76,7 @@ type VersionsBundle struct {
 	ExternalEtcdBootstrap  EtcdadmBootstrapBundle      `json:"etcdadmBootstrap"`
 	ExternalEtcdController EtcdadmControllerBundle     `json:"etcdadmController"`
 	Tinkerbell             TinkerbellBundle            `json:"tinkerbell"`
+	Microvm                MicrovmBundle               `json:"microvm"`
 }
 
 type EksDRelease struct {
@@ -233,6 +234,14 @@ type EtcdadmControllerBundle struct {
 }
 
 type TinkerbellBundle struct {
+	Version              string   `json:"version"`
+	ClusterAPIController Image    `json:"clusterAPIController"`
+	Components           Manifest `json:"components"`
+	Metadata             Manifest `json:"metadata"`
+	ClusterTemplate      Manifest `json:"clusterTemplate"`
+}
+
+type MicrovmBundle struct {
 	Version              string   `json:"version"`
 	ClusterAPIController Image    `json:"clusterAPIController"`
 	Components           Manifest `json:"components"`
