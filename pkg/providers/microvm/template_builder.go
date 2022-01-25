@@ -78,7 +78,8 @@ func buildTemplateMapCP(clusterSpec *cluster.Spec) map[string]interface{} {
 
 	values := map[string]interface{}{
 		"clusterName":                clusterSpec.Name,
-		"control_plane_replicas":     clusterSpec.Spec.ControlPlaneConfiguration.Count,
+		"controlPlaneEndpointIp":     clusterSpec.Spec.ControlPlaneConfiguration.Endpoint.Host,
+		"controlPlaneReplicas":       clusterSpec.Spec.ControlPlaneConfiguration.Count,
 		"kubernetesRepository":       bundle.KubeDistro.Kubernetes.Repository,
 		"kubernetesVersion":          bundle.KubeDistro.Kubernetes.Tag,
 		"etcdRepository":             bundle.KubeDistro.Etcd.Repository,
@@ -97,6 +98,7 @@ func buildTemplateMapCP(clusterSpec *cluster.Spec) map[string]interface{} {
 		"auditPolicy":                common.GetAuditPolicy(),
 		"podCidrs":                   clusterSpec.Spec.ClusterNetwork.Pods.CidrBlocks,
 		"serviceCidrs":               clusterSpec.Spec.ClusterNetwork.Services.CidrBlocks,
+		"kubeVipImage":               "ghcr.io/kube-vip/kube-vip:latest", // TODO: get this value from the bundle once we add it
 	}
 
 	if clusterSpec.Spec.ExternalEtcdConfiguration != nil {

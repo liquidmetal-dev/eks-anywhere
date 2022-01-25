@@ -164,6 +164,8 @@ func (f *Factory) WithProviderFactory(clusterConfig *v1alpha1.Cluster) *Factory 
 		f.WithDocker().WithKubectl()
 	case v1alpha1.TinkerbellDatacenterKind:
 		f.WithKubectl()
+	case v1alpha1.MicrovmDatacenterKind:
+		f.WithKubectl().WithWriter().WithCAPIClusterResourceSetManager()
 	}
 
 	f.buildSteps = append(f.buildSteps, func(ctx context.Context) error {
@@ -177,6 +179,7 @@ func (f *Factory) WithProviderFactory(clusterConfig *v1alpha1.Cluster) *Factory 
 			VSphereGovcClient:         f.dependencies.Govc,
 			VSphereKubectlClient:      f.dependencies.Kubectl,
 			TinkerbellKubectlClient:   f.dependencies.Kubectl,
+			MicrovmKubectlClient:      f.dependencies.Kubectl,
 			Writer:                    f.dependencies.Writer,
 			ClusterResourceSetManager: f.dependencies.ResourceSetManager,
 		}

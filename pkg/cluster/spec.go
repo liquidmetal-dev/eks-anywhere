@@ -247,6 +247,12 @@ func NewSpecFromClusterConfig(clusterConfigPath string, cliVersion version.Info,
 			return nil, err
 		}
 		s.DatacenterConfig = &datacenterConfig.ObjectMeta
+	case eksav1alpha1.MicrovmDatacenterKind:
+		datacenterConfig, err := eksav1alpha1.GetMicrovmDatacenterConfig(clusterConfigPath)
+		if err != nil {
+			return nil, err
+		}
+		s.DatacenterConfig = &datacenterConfig.ObjectMeta
 	}
 
 	if s.ManagementCluster != nil {

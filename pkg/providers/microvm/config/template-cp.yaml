@@ -9,9 +9,10 @@ spec:
   clusterNetwork:
     pods:
       cidrBlocks: {{.podCidrs}}
-    services: {{.serviceCidrs}}
+    services: 
+      cidrBlocks: {{.serviceCidrs}}
   controlPlaneEndpoint:
-    host: {{.serviceCidrs}}
+    host: {{.controlPlaneEndpointIp}}
     port: 6443
   infrastructureRef:
     apiVersion: infrastructure.cluster.x-k8s.io/v1alpha1
@@ -29,7 +30,7 @@ metadata:
   namespace: {{.eksaSystemNamespace}}
 spec:
   controlPlaneEndpoint:
-    host: {{.serviceCidrs}}
+    host: {{.controlPlaneEndpointIp}}
     port: 6443
   placement:
     staticPool:
@@ -55,7 +56,15 @@ spec:
       nodeRegistration:
         kubeletExtraArgs:
           provider-id: "PROVIDER_ID"
-    clusterConfiguration: {}
+    clusterConfiguration:
+      imageRepository: {{.kubernetesRepository}}
+      etcd:
+        local:
+          imageRepository: {{.etcdRepository}}
+          imageTag: {{.etcdImageTag}}
+      dns:
+        imageRepository: {{.corednsRepository}}
+        imageTag: {{.corednsVersion}}
     joinConfiguration:
       nodeRegistration:
         kubeletExtraArgs:
@@ -63,7 +72,7 @@ spec:
         ignorePreflightErrors:
          - DirAvailable--etc-kubernetes-manifests
     preKubeadmCommands:
-    - mkdir -p /etc/kubernetes/manifests && ctr images pull ghcr.io/kube-vip/kube-vip:v0.4.0 && ctr run --rm --net-host ghcr.io/kube-vip/kube-vip:v0.4.0 vip /kube-vip manifest pod --arp --interface $(ip -4 -j route list default | jq -r .[0].dev) --address 192.168.9.9 --controlplane --leaderElection > /etc/kubernetes/manifests/kube-vip.yaml
+    - mkdir -p /etc/kubernetes/manifests && ctr images pull {{.kubeVipImage}} && ctr run --rm --net-host {{.kubeVipImage}} vip /kube-vip manifest pod --arp --interface $(ip -4 -j route list default | jq -r .[0].dev) --address {{.controlPlaneEndpointIp}} --controlplane --leaderElection > /etc/kubernetes/manifests/kube-vip.yaml
     users:
     - name: {{.controlPlaneSshUsername}}
       sshAuthorizedKeys:

@@ -17,7 +17,8 @@ import (
 )
 
 const (
-	flintlockIPKey = "FLINTLOCK_IP"
+	hostEndPointKey = "HOST_ENDPOINT"
+	//controlPlaneVIPKey = "CONTROL_PLANE_VIP"
 )
 
 //go:embed config/template-cp.yaml
@@ -29,16 +30,17 @@ var defaultClusterConfigMD string
 var (
 	eksaMicrovmResourceType        = fmt.Sprintf("microvmdatacenterconfigs.%s", v1alpha1.GroupVersion.Group)
 	eksaMicrovmMachineResourceType = fmt.Sprintf("microvmmachineconfigs.%s", v1alpha1.GroupVersion.Group)
-	requiredEnvs                   = []string{flintlockIPKey}
+	requiredEnvs                   = []string{hostEndPointKey}
 )
 
 type provider struct {
-	clusterConfig         *v1alpha1.Cluster
-	datacenterConfig      *v1alpha1.MicrovmDatacenterConfig
-	machineConfigs        map[string]*v1alpha1.MicrovmMachineConfig
-	sshKey                string
-	providerKubectlClient ProviderKubectlClient
-	templateBuilder       *MicrovmTemplateBuilder
+	clusterConfig          *v1alpha1.Cluster
+	datacenterConfig       *v1alpha1.MicrovmDatacenterConfig
+	machineConfigs         map[string]*v1alpha1.MicrovmMachineConfig
+	controlPlaneSshAuthKey string
+	workerSshAuthKey       string
+	providerKubectlClient  ProviderKubectlClient
+	templateBuilder        *MicrovmTemplateBuilder
 }
 
 type ProviderKubectlClient interface {
@@ -58,8 +60,20 @@ func NewProvider(datacenterConfig *v1alpha1.MicrovmDatacenterConfig, machineConf
 }
 
 func (p *provider) BootstrapClusterOpts() ([]bootstrapper.BootstrapClusterOption, error) {
-	//TODO: do we need anything here?
-	return nil, nil
+	env := map[string]string{}
+	if p.clusterConfig.Spec.ProxyConfiguration != nil {
+		noProxy := fmt.Sprintf("%s,%s", p.clusterConfig.Spec.ControlPlaneConfiguration.Endpoint.Host, p.datacenterConfig.Spec.FlintlockURL)
+		for _, s := range p.clusterConfig.Spec.ProxyConfiguration.NoProxy {
+			if s != "" {
+				noProxy += "," + s
+			}
+		}
+		env["HTTP_PROXY"] = p.clusterConfig.Spec.ProxyConfiguration.HttpProxy
+		env["HTTPS_PROXY"] = p.clusterConfig.Spec.ProxyConfiguration.HttpsProxy
+		env["NO_PROXY"] = noProxy
+	}
+	// TODO: do we need: bootstrapper.WithExtraDockerMounts()
+	return []bootstrapper.BootstrapClusterOption{bootstrapper.WithEnv(env)}, nil
 }
 
 func (p *provider) BootstrapSetup(ctx context.Context, clusterConfig *v1alpha1.Cluster, cluster *types.Cluster) error {
@@ -84,13 +98,19 @@ func (p *provider) DeleteResources(_ context.Context, _ *cluster.Spec) error {
 
 func (p *provider) SetupAndValidateCreateCluster(ctx context.Context, clusterSpec *cluster.Spec) error {
 	logger.Info("Warning: The microvm infrastructure provider is still in development and should only be used for testing/dev purposes")
-	//if clusterSpec.Spec.ControlPlaneConfiguration.Endpoint != nil && clusterSpec.Spec.ControlPlaneConfiguration.Endpoint.Host != "" {
-	//	return fmt.Errorf("specifying endpoint host configuration in Cluster is not supported")
-	//}
+	if err := setEnvVars(p.datacenterConfig); err != nil {
+		return fmt.Errorf("failed setup and validations: %v", err)
+	}
+	p.controlPlaneSshAuthKey = p.machineConfigs[p.clusterConfig.Spec.ControlPlaneConfiguration.MachineGroupRef.Name].Spec.Users[0].SshAuthorizedKeys[0]
+	p.workerSshAuthKey = p.machineConfigs[p.clusterConfig.Spec.WorkerNodeGroupConfigurations[0].MachineGroupRef.Name].Spec.Users[0].SshAuthorizedKeys[0]
 	return nil
 }
 
 func (p *provider) SetupAndValidateDeleteCluster(ctx context.Context) error {
+	// TODO: validations?
+	if err := setEnvVars(p.datacenterConfig); err != nil {
+		return fmt.Errorf("failed setup and validations: %v", err)
+	}
 	return nil
 }
 
@@ -235,4 +255,12 @@ func (p *provider) generateCAPISpecForCreate(ctx context.Context, cluster *types
 		return nil, nil, err
 	}
 	return controlPlaneSpec, workersSpec, nil
+}
+
+func setEnvVars(datacenterConfig *v1alpha1.MicrovmDatacenterConfig) error {
+	if err := os.Setenv(hostEndPointKey, datacenterConfig.Spec.FlintlockURL); err != nil {
+		return fmt.Errorf("unable to set %s: %v", hostEndPointKey, err)
+	}
+
+	return nil
 }
