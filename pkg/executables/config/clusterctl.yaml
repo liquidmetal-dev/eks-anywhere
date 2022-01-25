@@ -9,6 +9,12 @@ providers:
     type: "InfrastructureProvider"
     version: "{{.TinkerbellProviderVersion}}"
     {{- end }}
+    {{- if (eq .IsActiveMicrovmProvider "true") }}
+  - name: "microvm"
+    url: "{{.dir}}/infrastructure-microvm/{{.MicrovmProviderVersion}}/infrastructure-components.yaml"
+    type: "InfrastructureProvider"
+    version: "{{.MicrovmProviderVersion}}"
+    {{- end }}
   - name: "vsphere"
     url: "{{.dir}}/infrastructure-vsphere/{{.VSphereProviderVersion}}/infrastructure-components.yaml"
     type: "InfrastructureProvider"

@@ -258,6 +258,7 @@ func (r *ReleaseConfig) GenerateBundleArtifactsTable() (map[string][]Artifact, e
 
 	if r.DevRelease && r.BuildRepoBranchName == "main" {
 		eksAArtifactsFuncs["cluster-api-provider-tinkerbell"] = r.GetCaptAssets
+		eksAArtifactsFuncs["cluster-api-provider-microvm"] = r.GetCapmvmAssets
 	}
 
 	for componentName, artifactFunc := range eksAArtifactsFuncs {

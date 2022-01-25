@@ -229,6 +229,10 @@ func (c *Clusterctl) buildConfig(clusterSpec *cluster.Spec, clusterName string, 
 	if features.IsActive(features.TinkerbellProvider()) {
 		tinkerbellProvider = "true"
 	}
+	microvmProvider := "false"
+	if features.IsActive(features.MicrovmProvider()) {
+		microvmProvider = "true"
+	}
 
 	data := map[string]string{
 		"CertManagerInjectorRepository":                   imageRepository(bundle.CertManager.Cainjector),
@@ -275,6 +279,8 @@ func (c *Clusterctl) buildConfig(clusterSpec *cluster.Spec, clusterName string, 
 		"AwsProviderVersion":                              bundle.Aws.Version,
 		"TinkerbellProviderVersion":                       "v0.1.0", // TODO - version should come from the bundle
 		"IsActiveTinkerbellProvider":                      tinkerbellProvider,
+		"MicrovmProviderVersion":                          "v0.2.2", // TODO - version should come from the bundle
+		"IsActiveMicrovmProvider":                         microvmProvider,
 		"ClusterApiProviderVersion":                       bundle.ClusterAPI.Version,
 		"KubeadmControlPlaneProviderVersion":              bundle.ControlPlane.Version,
 		"KubeadmBootstrapProviderVersion":                 bundle.Bootstrap.Version,
