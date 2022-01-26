@@ -48,13 +48,24 @@ type ProviderKubectlClient interface {
 }
 
 func NewProvider(datacenterConfig *v1alpha1.MicrovmDatacenterConfig, machineConfigs map[string]*v1alpha1.MicrovmMachineConfig, clusterConfig *v1alpha1.Cluster, providerKubectlClient ProviderKubectlClient, now types.NowFunc) *provider {
+	var controlPlaneMachineSpec, workerNodeGroupMachineSpec *v1alpha1.MicrovmMachineConfigSpec
+	if clusterConfig.Spec.ControlPlaneConfiguration.MachineGroupRef != nil && machineConfigs[clusterConfig.Spec.ControlPlaneConfiguration.MachineGroupRef.Name] != nil {
+		controlPlaneMachineSpec = &machineConfigs[clusterConfig.Spec.ControlPlaneConfiguration.MachineGroupRef.Name].Spec
+	}
+	if len(clusterConfig.Spec.WorkerNodeGroupConfigurations) > 0 && clusterConfig.Spec.WorkerNodeGroupConfigurations[0].MachineGroupRef != nil && machineConfigs[clusterConfig.Spec.WorkerNodeGroupConfigurations[0].MachineGroupRef.Name] != nil {
+		workerNodeGroupMachineSpec = &machineConfigs[clusterConfig.Spec.WorkerNodeGroupConfigurations[0].MachineGroupRef.Name].Spec
+	}
+
 	return &provider{
 		clusterConfig:         clusterConfig,
 		datacenterConfig:      datacenterConfig,
 		machineConfigs:        machineConfigs,
 		providerKubectlClient: providerKubectlClient,
 		templateBuilder: &MicrovmTemplateBuilder{
-			now: now,
+			now:                        now,
+			datacenterSpec:             &datacenterConfig.Spec,
+			controlPlaneMachineSpec:    controlPlaneMachineSpec,
+			workerNodeGroupMachineSpec: workerNodeGroupMachineSpec,
 		},
 	}
 }

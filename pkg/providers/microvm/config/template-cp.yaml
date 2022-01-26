@@ -17,16 +17,16 @@ spec:
   infrastructureRef:
     apiVersion: infrastructure.cluster.x-k8s.io/v1alpha1
     kind: MicrovmCluster
-    name: {.clusterName}}
+    name: {{.clusterName}}
   controlPlaneRef:
     kind: KubeadmControlPlane
     apiVersion: controlplane.cluster.x-k8s.io/v1beta1
-    name: {.clusterName}}
+    name: {{.clusterName}}
 ---
 apiVersion: infrastructure.cluster.x-k8s.io/v1alpha1
 kind: MicrovmCluster
 metadata:
-  name: {.clusterName}}
+  name: {{.clusterName}}
   namespace: {{.eksaSystemNamespace}}
 spec:
   controlPlaneEndpoint:
@@ -92,7 +92,7 @@ spec:
       memoryMb: 2048
       rootVolume:
         id: root
-        image: docker.io/richardcase/capmvm-kubernetes:1.21.8
+        image: docker.io/richardcase/capmvm-kubernetes:v1.20.11-eks-1-20-10
         mountPoint: "/"
       kernel:
         filename: "boot/vmlinux"

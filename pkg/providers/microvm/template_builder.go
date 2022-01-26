@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/aws/eks-anywhere/pkg/api/v1alpha1"
 	"github.com/aws/eks-anywhere/pkg/cluster"
 	"github.com/aws/eks-anywhere/pkg/clusterapi"
 	"github.com/aws/eks-anywhere/pkg/constants"
@@ -14,14 +15,20 @@ import (
 	"github.com/aws/eks-anywhere/pkg/types"
 )
 
-func NewMicrovmTemplateBuilder(now types.NowFunc) providers.TemplateBuilder {
+func NewMicrovmTemplateBuilder(datacenterSpec *v1alpha1.MicrovmDatacenterConfigSpec, controlPlaneMachineSpec, workerNodeGroupMachineSpec *v1alpha1.MicrovmMachineConfigSpec, now types.NowFunc) providers.TemplateBuilder {
 	return &MicrovmTemplateBuilder{
-		now: now,
+		now:                        now,
+		datacenterSpec:             datacenterSpec,
+		controlPlaneMachineSpec:    controlPlaneMachineSpec,
+		workerNodeGroupMachineSpec: workerNodeGroupMachineSpec,
 	}
 }
 
 type MicrovmTemplateBuilder struct {
-	now types.NowFunc
+	datacenterSpec             *v1alpha1.MicrovmDatacenterConfigSpec
+	controlPlaneMachineSpec    *v1alpha1.MicrovmMachineConfigSpec
+	workerNodeGroupMachineSpec *v1alpha1.MicrovmMachineConfigSpec
+	now                        types.NowFunc
 }
 
 func (d *MicrovmTemplateBuilder) WorkerMachineTemplateName(clusterName string) string {
@@ -40,7 +47,7 @@ func (d *MicrovmTemplateBuilder) EtcdMachineTemplateName(clusterName string) str
 }
 
 func (d *MicrovmTemplateBuilder) GenerateCAPISpecControlPlane(clusterSpec *cluster.Spec, buildOptions ...providers.BuildMapOption) (content []byte, err error) {
-	values := buildTemplateMapCP(clusterSpec)
+	values := buildTemplateMapCP(clusterSpec, *d.datacenterSpec, *d.controlPlaneMachineSpec)
 	for _, buildOption := range buildOptions {
 		buildOption(values)
 	}
@@ -54,7 +61,7 @@ func (d *MicrovmTemplateBuilder) GenerateCAPISpecControlPlane(clusterSpec *clust
 }
 
 func (d *MicrovmTemplateBuilder) GenerateCAPISpecWorkers(clusterSpec *cluster.Spec, buildOptions ...providers.BuildMapOption) (content []byte, err error) {
-	values := buildTemplateMapMD(clusterSpec)
+	values := buildTemplateMapMD(clusterSpec, *d.workerNodeGroupMachineSpec)
 	for _, buildOption := range buildOptions {
 		buildOption(values)
 	}
@@ -67,8 +74,9 @@ func (d *MicrovmTemplateBuilder) GenerateCAPISpecWorkers(clusterSpec *cluster.Sp
 	return bytes, nil
 }
 
-func buildTemplateMapCP(clusterSpec *cluster.Spec) map[string]interface{} {
+func buildTemplateMapCP(clusterSpec *cluster.Spec, datacenterSpec v1alpha1.MicrovmDatacenterConfigSpec, controlPlaneMachineSpec v1alpha1.MicrovmMachineConfigSpec) map[string]interface{} {
 	bundle := clusterSpec.VersionsBundle
+	format := "cloud-config"
 	etcdExtraArgs := clusterapi.SecureEtcdTlsCipherSuitesExtraArgs()
 	sharedExtraArgs := clusterapi.SecureTlsCipherSuitesExtraArgs()
 	apiServerExtraArgs := clusterapi.OIDCToExtraArgs(clusterSpec.OIDCConfig).
@@ -77,34 +85,38 @@ func buildTemplateMapCP(clusterSpec *cluster.Spec) map[string]interface{} {
 		Append(sharedExtraArgs)
 
 	values := map[string]interface{}{
-		"clusterName":                clusterSpec.Name,
-		"controlPlaneEndpointIp":     clusterSpec.Spec.ControlPlaneConfiguration.Endpoint.Host,
-		"controlPlaneReplicas":       clusterSpec.Spec.ControlPlaneConfiguration.Count,
-		"kubernetesRepository":       bundle.KubeDistro.Kubernetes.Repository,
-		"kubernetesVersion":          bundle.KubeDistro.Kubernetes.Tag,
-		"etcdRepository":             bundle.KubeDistro.Etcd.Repository,
-		"etcdVersion":                bundle.KubeDistro.Etcd.Tag,
-		"corednsRepository":          bundle.KubeDistro.CoreDNS.Repository,
-		"corednsVersion":             bundle.KubeDistro.CoreDNS.Tag,
-		"kindNodeImage":              bundle.EksD.KindNode.VersionedImage(),
-		"etcdExtraArgs":              etcdExtraArgs.ToPartialYaml(),
-		"etcdCipherSuites":           crypto.SecureCipherSuitesString(),
-		"apiserverExtraArgs":         apiServerExtraArgs.ToPartialYaml(),
-		"controllermanagerExtraArgs": sharedExtraArgs.ToPartialYaml(),
-		"schedulerExtraArgs":         sharedExtraArgs.ToPartialYaml(),
-		"kubeletExtraArgs":           sharedExtraArgs.ToPartialYaml(),
-		"externalEtcdVersion":        bundle.KubeDistro.EtcdVersion,
-		"eksaSystemNamespace":        constants.EksaSystemNamespace,
-		"auditPolicy":                common.GetAuditPolicy(),
-		"podCidrs":                   clusterSpec.Spec.ClusterNetwork.Pods.CidrBlocks,
-		"serviceCidrs":               clusterSpec.Spec.ClusterNetwork.Services.CidrBlocks,
-		"kubeVipImage":               "ghcr.io/kube-vip/kube-vip:latest", // TODO: get this value from the bundle once we add it
+		"clusterName":                  clusterSpec.ObjectMeta.Name,
+		"controlPlaneEndpointIp":       clusterSpec.Spec.ControlPlaneConfiguration.Endpoint.Host,
+		"controlPlaneReplicas":         clusterSpec.Spec.ControlPlaneConfiguration.Count,
+		"kubernetesRepository":         bundle.KubeDistro.Kubernetes.Repository,
+		"kubernetesVersion":            bundle.KubeDistro.Kubernetes.Tag,
+		"etcdRepository":               bundle.KubeDistro.Etcd.Repository,
+		"etcdImageTag":                 bundle.KubeDistro.Etcd.Tag,
+		"corednsRepository":            bundle.KubeDistro.CoreDNS.Repository,
+		"corednsVersion":               bundle.KubeDistro.CoreDNS.Tag,
+		"kindNodeImage":                bundle.EksD.KindNode.VersionedImage(),
+		"etcdExtraArgs":                etcdExtraArgs.ToPartialYaml(),
+		"etcdCipherSuites":             crypto.SecureCipherSuitesString(),
+		"apiserverExtraArgs":           apiServerExtraArgs.ToPartialYaml(),
+		"controllermanagerExtraArgs":   sharedExtraArgs.ToPartialYaml(),
+		"schedulerExtraArgs":           sharedExtraArgs.ToPartialYaml(),
+		"kubeletExtraArgs":             sharedExtraArgs.ToPartialYaml(),
+		"externalEtcdVersion":          bundle.KubeDistro.EtcdVersion,
+		"eksaSystemNamespace":          constants.EksaSystemNamespace,
+		"auditPolicy":                  common.GetAuditPolicy(),
+		"podCidrs":                     clusterSpec.Spec.ClusterNetwork.Pods.CidrBlocks,
+		"serviceCidrs":                 clusterSpec.Spec.ClusterNetwork.Services.CidrBlocks,
+		"controlPlaneSshUsername":      controlPlaneMachineSpec.Users[0].Name,
+		"controlPlaneSshAuthorizedKey": controlPlaneMachineSpec.Users[0].SshAuthorizedKeys,
+		"kubeVipImage":                 "ghcr.io/kube-vip/kube-vip:latest", // TODO: get this value from the bundle once we add it
+		"flintlockurl":                 datacenterSpec.FlintlockURL,
+		"format":                       format,
 	}
 
-	if clusterSpec.Spec.ExternalEtcdConfiguration != nil {
-		values["externalEtcd"] = true
-		values["externalEtcdReplicas"] = clusterSpec.Spec.ExternalEtcdConfiguration.Count
-	}
+	// if clusterSpec.Spec.ExternalEtcdConfiguration != nil {
+	// 	values["externalEtcd"] = true
+	// 	values["externalEtcdReplicas"] = clusterSpec.Spec.ExternalEtcdConfiguration.Count
+	// }
 	if clusterSpec.AWSIamConfig != nil {
 		values["awsIamAuth"] = true
 	}
@@ -116,17 +128,21 @@ func buildTemplateMapCP(clusterSpec *cluster.Spec) map[string]interface{} {
 	return values
 }
 
-func buildTemplateMapMD(clusterSpec *cluster.Spec) map[string]interface{} {
+func buildTemplateMapMD(clusterSpec *cluster.Spec, workerMachineSpec v1alpha1.MicrovmMachineConfigSpec) map[string]interface{} {
 	bundle := clusterSpec.VersionsBundle
+	format := "cloud-config"
 	kubeletExtraArgs := clusterapi.SecureTlsCipherSuitesExtraArgs()
 
 	values := map[string]interface{}{
-		"clusterName":         clusterSpec.Name,
-		"worker_replicas":     clusterSpec.Spec.WorkerNodeGroupConfigurations[0].Count,
-		"kubernetesVersion":   bundle.KubeDistro.Kubernetes.Tag,
-		"kindNodeImage":       bundle.EksD.KindNode.VersionedImage(),
-		"eksaSystemNamespace": constants.EksaSystemNamespace,
-		"kubeletExtraArgs":    kubeletExtraArgs.ToPartialYaml(),
+		"clusterName":            clusterSpec.ObjectMeta.Name,
+		"workerReplicas":         clusterSpec.Spec.WorkerNodeGroupConfigurations[0].Count,
+		"kubernetesVersion":      bundle.KubeDistro.Kubernetes.Tag,
+		"kindNodeImage":          bundle.EksD.KindNode.VersionedImage(),
+		"eksaSystemNamespace":    constants.EksaSystemNamespace,
+		"kubeletExtraArgs":       kubeletExtraArgs.ToPartialYaml(),
+		"workerSshUsername":      workerMachineSpec.Users[0].Name,
+		"workerSshAuthorizedKey": workerMachineSpec.Users[0].SshAuthorizedKeys,
+		"format":                 format,
 	}
 	return values
 }
