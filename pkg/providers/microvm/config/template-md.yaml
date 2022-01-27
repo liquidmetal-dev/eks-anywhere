@@ -43,7 +43,7 @@ spec:
       memoryMb: 2048
       rootVolume:
         id: root
-        image: docker.io/richardcase/capmvm-kubernetes:v1.20.11-eks-1-20-10
+        image: ghcr.io/richardcase/capmvm-kubernetes:v1.20.11-eks-1-20-10
         mountPoint: "/"
       kernel:
         filename: "boot/vmlinux"
@@ -63,11 +63,12 @@ spec:
     spec:
       joinConfiguration:
         nodeRegistration:
+          criSocket: /run/containerd/containerd.sock
           kubeletExtraArgs:
             provider-id: "PROVIDER_ID"
-      users:
-      - name: {{.workerSshUsername}}
-        sshAuthorizedKeys:
-        - '{{.workerSshAuthorizedKey}}'
-        sudo: ALL=(ALL) NOPASSWD:ALL
+#      users:
+#      - name: {{.workerSshUsername}}
+#        sshAuthorizedKeys:
+#        - '{{.workerSshAuthorizedKey}}'
+#        sudo: ALL=(ALL) NOPASSWD:ALL
       format: {{.format}}

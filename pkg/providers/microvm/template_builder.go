@@ -111,6 +111,7 @@ func buildTemplateMapCP(clusterSpec *cluster.Spec, datacenterSpec v1alpha1.Micro
 		"kubeVipImage":                 "ghcr.io/kube-vip/kube-vip:latest", // TODO: get this value from the bundle once we add it
 		"flintlockurl":                 datacenterSpec.FlintlockURL,
 		"format":                       format,
+		"clusterSSHKey":                datacenterSpec.SSHKey,
 	}
 
 	// if clusterSpec.Spec.ExternalEtcdConfiguration != nil {
