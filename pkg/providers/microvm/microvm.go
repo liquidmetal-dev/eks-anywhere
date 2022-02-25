@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/aws/eks-anywhere/pkg/api/v1alpha1"
 	"github.com/aws/eks-anywhere/pkg/bootstrapper"
@@ -12,6 +13,7 @@ import (
 	"github.com/aws/eks-anywhere/pkg/constants"
 	"github.com/aws/eks-anywhere/pkg/logger"
 	"github.com/aws/eks-anywhere/pkg/providers"
+	"github.com/aws/eks-anywhere/pkg/retrier"
 	"github.com/aws/eks-anywhere/pkg/types"
 	releasev1alpha1 "github.com/aws/eks-anywhere/release/api/v1alpha1"
 )
@@ -19,6 +21,9 @@ import (
 const (
 	hostEndPointKey = "HOST_ENDPOINT"
 	//controlPlaneVIPKey = "CONTROL_PLANE_VIP"
+
+	maxRetries    = 30
+	backOffPeriod = 5 * time.Second
 )
 
 //go:embed config/template-cp.yaml
@@ -26,6 +31,9 @@ var defaultCAPIConfigCP string
 
 //go:embed config/template-md.yaml
 var defaultClusterConfigMD string
+
+//go:embed config/coredns.yaml
+var coreDNSConfig string
 
 var (
 	eksaMicrovmResourceType        = fmt.Sprintf("microvmdatacenterconfigs.%s", v1alpha1.GroupVersion.Group)
@@ -41,10 +49,11 @@ type provider struct {
 	workerSshAuthKey       string
 	providerKubectlClient  ProviderKubectlClient
 	templateBuilder        *MicrovmTemplateBuilder
+	Retrier                *retrier.Retrier
 }
 
 type ProviderKubectlClient interface {
-	ApplyHardware(ctx context.Context, hardwareYaml string, kubeConfFile string) error
+	ApplyKubeSpecFromBytes(ctx context.Context, cluster *types.Cluster, data []byte) error
 }
 
 func NewProvider(datacenterConfig *v1alpha1.MicrovmDatacenterConfig, machineConfigs map[string]*v1alpha1.MicrovmMachineConfig, clusterConfig *v1alpha1.Cluster, providerKubectlClient ProviderKubectlClient, now types.NowFunc) *provider {
@@ -67,6 +76,7 @@ func NewProvider(datacenterConfig *v1alpha1.MicrovmDatacenterConfig, machineConf
 			controlPlaneMachineSpec:    controlPlaneMachineSpec,
 			workerNodeGroupMachineSpec: workerNodeGroupMachineSpec,
 		},
+		Retrier: retrier.NewWithMaxRetries(maxRetries, backOffPeriod),
 	}
 }
 
@@ -231,6 +241,16 @@ func (p *provider) UpgradeNeeded(_ context.Context, _, _ *cluster.Spec) (bool, e
 }
 
 func (p *provider) RunPostControlPlaneCreation(ctx context.Context, clusterSpec *cluster.Spec, cluster *types.Cluster) error {
+	// logger.Info("Applying coredns configuration")
+	// err := p.Retrier.Retry(
+	// 	func() error {
+	// 		return p.providerKubectlClient.ApplyKubeSpecFromBytes(ctx, cluster, []byte(coreDNSConfig))
+	// 	},
+	// )
+	// if err != nil {
+	// 	return fmt.Errorf("applying coredns configmap: %w", err)
+	// }
+
 	return nil
 }
 

@@ -6,6 +6,7 @@ import (
 
 type MicrovmDatacenterConfigSpec struct {
 	FlintlockURL string `json:"flintlockURL"`
+	MicrovmProxy string `json:"microvmProxy,omitempty"`
 	SSHKey       string `json:"sshKey,omitempty"`
 }
 
