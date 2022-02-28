@@ -1,0 +1,76 @@
+apiVersion: anywhere.eks.amazonaws.com/v1alpha1
+kind: Cluster
+metadata:
+  name: testcluster
+  namespace: default
+spec:
+  clusterNetwork:
+    cni: cilium
+    pods:
+      cidrBlocks:
+      - 172.25.0.0/16
+    services:
+      cidrBlocks:
+      - 172.26.0.0/16
+  controlPlaneConfiguration:
+    count: 1
+    endpoint:
+      host: 192.168.9.9
+    machineGroupRef:
+      kind: MicrovmMachineConfig
+      name: testcluster-cp
+  datacenterRef:
+    kind: MicrovmDatacenterConfig
+    name: testcluster
+  kubernetesVersion: "1.20"
+  managementCluster:
+    name: testcluster
+  workerNodeGroupConfigurations:
+  - count: 1
+    machineGroupRef:
+      kind: MicrovmMachineConfig
+      name: testcluster
+
+---
+apiVersion: anywhere.eks.amazonaws.com/v1alpha1
+kind: MicrovmDatacenterConfig
+metadata:
+  name: testcluster
+  namespace: default
+spec:
+  flintlockURL: 192.168.9.97:9090
+  microvmProxy: http://192.168.9.209:8888
+  sshKey: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGsm+VI+2VNVXPCFeflXkA5Jcms30rj1FPQcpSSt1kuV
+    richard@weave.works
+
+---
+apiVersion: anywhere.eks.amazonaws.com/v1alpha1
+kind: MicrovmMachineConfig
+metadata:
+  annotations:
+    anywhere.eks.amazonaws.com/control-plane: "true"
+  name: testcluster-cp
+  namespace: default
+spec:
+  osFamily: ""
+  users:
+  - name: ubuntu
+    sshAuthorizedKeys:
+    - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGsm+VI+2VNVXPCFeflXkA5Jcms30rj1FPQcpSSt1kuV
+      richard@weave.works
+
+---
+apiVersion: anywhere.eks.amazonaws.com/v1alpha1
+kind: MicrovmMachineConfig
+metadata:
+  name: testcluster
+  namespace: default
+spec:
+  osFamily: ""
+  users:
+  - name: ubuntu
+    sshAuthorizedKeys:
+    - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGsm+VI+2VNVXPCFeflXkA5Jcms30rj1FPQcpSSt1kuV
+      richard@weave.works
+
+---

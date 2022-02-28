@@ -22,6 +22,7 @@ func NewMicrovmMachineConfigGenerate(name string) *MicrovmMachineConfigGenerate 
 			Name: name,
 		},
 		Spec: MicrovmMachineConfigSpec{
+			OSFamily: Ubuntu,
 			Users: []UserConfiguration{{
 				Name:              "ubuntu",
 				SshAuthorizedKeys: []string{"ssh-rsa AAAA..."},

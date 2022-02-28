@@ -4,18 +4,21 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// MicrovmDatacenterConfigSpec defines the desired state of MicrovmDatacenterConfig.
 type MicrovmDatacenterConfigSpec struct {
 	FlintlockURL string `json:"flintlockURL"`
 	MicrovmProxy string `json:"microvmProxy,omitempty"`
 	SSHKey       string `json:"sshKey,omitempty"`
 }
 
+// MicrovmDatacenterConfigStatus defines the observed status for MicrovmDatacenterConfig.
 type MicrovmDatacenterConfigStatus struct {
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
+// // MicrovmDatacenterConfig is the Schema for the MicrovmDatacenterConfigs API
 type MicrovmDatacenterConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

@@ -9,7 +9,8 @@ import (
 // MicrovmMachineConfigSpec defines the desired state of MicrovmMachineConfig
 type MicrovmMachineConfigSpec struct {
 	//TODO: add here
-	Users []UserConfiguration `json:"users,omitempty"`
+	OSFamily OSFamily            `json:"osFamily"`
+	Users    []UserConfiguration `json:"users,omitempty"`
 }
 
 func (c *MicrovmMachineConfig) PauseReconcile() {
@@ -57,6 +58,10 @@ func (c *MicrovmMachineConfig) IsManagement() bool {
 		return s != ""
 	}
 	return false
+}
+
+func (c *MicrovmMachineConfig) OSFamily() OSFamily {
+	return c.Spec.OSFamily
 }
 
 func (c *MicrovmMachineConfig) GetNamespace() string {

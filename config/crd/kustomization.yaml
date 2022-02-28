@@ -13,6 +13,8 @@ resources:
 - bases/anywhere.eks.amazonaws.com_awsiamconfigs.yaml
 - bases/anywhere.eks.amazonaws.com_tinkerbelldatacenterconfigs.yaml
 - bases/anywhere.eks.amazonaws.com_tinkerbellmachineconfigs.yaml
+- bases/anywhere.eks.amazonaws.com_microvmdatacenterconfigs.yaml
+- bases/anywhere.eks.amazonaws.com_microvmmachineconfigs.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:

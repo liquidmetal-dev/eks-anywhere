@@ -54,6 +54,7 @@ type provider struct {
 
 type ProviderKubectlClient interface {
 	ApplyKubeSpecFromBytes(ctx context.Context, cluster *types.Cluster, data []byte) error
+	WaitForDeployment(ctx context.Context, cluster *types.Cluster, timeout string, condition string, target string, namespace string) error
 }
 
 func NewProvider(datacenterConfig *v1alpha1.MicrovmDatacenterConfig, machineConfigs map[string]*v1alpha1.MicrovmMachineConfig, clusterConfig *v1alpha1.Cluster, providerKubectlClient ProviderKubectlClient, now types.NowFunc) *provider {
@@ -213,7 +214,23 @@ func (p *provider) DatacenterConfig() providers.DatacenterConfig {
 }
 
 func (p *provider) MachineConfigs() []providers.MachineConfig {
-	return nil
+	// TODO: Figure out if something is needed here
+	var configs []providers.MachineConfig
+	controlPlaneMachineName := p.clusterConfig.Spec.ControlPlaneConfiguration.MachineGroupRef.Name
+	workerMachineName := p.clusterConfig.Spec.WorkerNodeGroupConfigurations[0].MachineGroupRef.Name
+	p.machineConfigs[controlPlaneMachineName].Annotations = map[string]string{p.clusterConfig.ControlPlaneAnnotation(): "true"}
+	if p.clusterConfig.IsManaged() {
+		p.machineConfigs[controlPlaneMachineName].SetManagement(p.clusterConfig.ManagedBy())
+	}
+
+	configs = append(configs, p.machineConfigs[controlPlaneMachineName])
+	if workerMachineName != controlPlaneMachineName {
+		configs = append(configs, p.machineConfigs[workerMachineName])
+		if p.clusterConfig.IsManaged() {
+			p.machineConfigs[workerMachineName].SetManagement(p.clusterConfig.ManagedBy())
+		}
+	}
+	return configs
 }
 
 func (p *provider) ValidateNewSpec(_ context.Context, _ *types.Cluster, _ *cluster.Spec) error {
@@ -241,10 +258,10 @@ func (p *provider) UpgradeNeeded(_ context.Context, _, _ *cluster.Spec) (bool, e
 }
 
 func (p *provider) RunPostControlPlaneCreation(ctx context.Context, clusterSpec *cluster.Spec, cluster *types.Cluster) error {
-	// logger.Info("Applying coredns configuration")
+	// logger.Info("Waiting got CNI (cilium) to be ready")
 	// err := p.Retrier.Retry(
 	// 	func() error {
-	// 		return p.providerKubectlClient.ApplyKubeSpecFromBytes(ctx, cluster, []byte(coreDNSConfig))
+	// 		return p.providerKubectlClient.WaitForDeployment(ctx, cluster, "5m", "Available", "cilium-operator", "kube-system")
 	// 	},
 	// )
 	// if err != nil {

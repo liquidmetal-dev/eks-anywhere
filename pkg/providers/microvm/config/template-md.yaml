@@ -39,8 +39,8 @@ metadata:
 spec:
   template:
     spec:
-      vcpu: 2
-      memoryMb: 2048
+      vcpu: 4
+      memoryMb: 8192
       rootVolume:
         id: root
         image: ghcr.io/richardcase/capmvm-kubernetes:v1.20.11-eks-1-20-10
