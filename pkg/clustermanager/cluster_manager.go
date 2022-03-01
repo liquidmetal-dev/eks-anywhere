@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"time"
 
+	appsv1 "k8s.io/api/apps/v1"
 	clusterv1 "sigs.k8s.io/cluster-api/api/v1alpha3"
 	"sigs.k8s.io/yaml"
 
@@ -84,6 +85,8 @@ type ClusterClient interface {
 	GetApiServerUrl(ctx context.Context, cluster *types.Cluster) (string, error)
 	GetClusterCATlsCert(ctx context.Context, clusterName string, cluster *types.Cluster, namespace string) ([]byte, error)
 	KubeconfigSecretAvailable(ctx context.Context, kubeconfig string, clusterName string, namespace string) (bool, error)
+	GetDaemonSet(ctx context.Context, name, namespace, kubeconfig string) (*appsv1.DaemonSet, error)
+	WaitForPod(ctx context.Context, kubeconfig string, timeout string, forCondition string, podName string, namespace string, labels map[string]string) error
 }
 
 type Networking interface {
@@ -528,7 +531,7 @@ func (c *ClusterManager) waitForCAPI(ctx context.Context, cluster *types.Cluster
 	return nil
 }
 
-func (c *ClusterManager) InstallNetworking(ctx context.Context, cluster *types.Cluster, clusterSpec *cluster.Spec) error {
+func (c *ClusterManager) InstallNetworking(ctx context.Context, cluster *types.Cluster, clusterSpec *cluster.Spec, provider providers.Provider) error {
 	networkingManifestContent, err := c.networking.GenerateManifest(clusterSpec)
 	if err != nil {
 		return fmt.Errorf("error generating networking manifest: %v", err)
@@ -541,6 +544,32 @@ func (c *ClusterManager) InstallNetworking(ctx context.Context, cluster *types.C
 	if err != nil {
 		return fmt.Errorf("error applying networking manifest spec: %v", err)
 	}
+
+	//TODO: is there a better way to do this? RC
+	logger.Info("Waiting for networking to be ready")
+	err = c.Retrier.Retry(
+		func() error {
+			//return c.waitForNetworking(ctx, cluster, provider)
+			return c.clusterClient.WaitForPod(ctx, cluster.KubeconfigFile, "15m", "ready", "", "kube-system", map[string]string{"k8s-app": "cilium"})
+		},
+	)
+	if err != nil {
+		return fmt.Errorf("error waiting for networking to be ready: %w", err)
+	}
+
+	return nil
+}
+
+func (c *ClusterManager) waitForNetworking(ctx context.Context, cluster *types.Cluster, provider providers.Provider) error {
+	ds, err := c.clusterClient.GetDaemonSet(ctx, "cilium", "kube-system", cluster.KubeconfigFile)
+	if err != nil {
+		return err
+	}
+
+	if ds.Status.NumberReady == 0 {
+		return fmt.Errorf("number of ds instances not ready. expoecting: %d", ds.Status.DesiredNumberScheduled)
+	}
+
 	return nil
 }
 

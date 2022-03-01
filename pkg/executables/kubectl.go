@@ -197,6 +197,30 @@ func (k *Kubectl) Wait(ctx context.Context, kubeconfig string, timeout string, f
 	return nil
 }
 
+func (k *Kubectl) WaitForPod(ctx context.Context, kubeconfig string, timeout string, forCondition string, podName string, namespace string, labels map[string]string) error {
+	args := []string{
+		"--kubeconfig", kubeconfig, "-n", namespace,
+		"wait",
+	}
+	if podName == "" {
+		args = append(args, "pod")
+	} else {
+		args = append(args, fmt.Sprintf("pod/%s", podName))
+	}
+	for label, val := range labels {
+		args = append(args, "-l")
+		args = append(args, fmt.Sprintf("%s=%s", label, val))
+	}
+	args = append(args, "--timeout", timeout)
+	args = append(args, fmt.Sprintf("--for=condition=%s", forCondition))
+
+	_, err := k.Execute(ctx, args...)
+	if err != nil {
+		return fmt.Errorf("error executing wait: %v", err)
+	}
+	return nil
+}
+
 func (k *Kubectl) DeleteEksaVSphereDatacenterConfig(ctx context.Context, vsphereDatacenterConfigName string, kubeconfigFile string, namespace string) error {
 	params := []string{"delete", eksaVSphereDatacenterResourceType, vsphereDatacenterConfigName, "--kubeconfig", kubeconfigFile, "--namespace", namespace, "--ignore-not-found=true"}
 	_, err := k.Execute(ctx, params...)
