@@ -2359,14 +2359,25 @@ spec:
             description: MicrovmDatacenterConfigSpec defines the desired state of
               MicrovmDatacenterConfig.
             properties:
-              flintlockURL:
-                type: string
+              hosts:
+                items:
+                  description: MicrovmHost represents a host that can run microvms
+                  properties:
+                    controlplaneAllowed:
+                      type: boolean
+                    endpoint:
+                      type: string
+                  required:
+                  - controlplaneAllowed
+                  - endpoint
+                  type: object
+                type: array
               microvmProxy:
                 type: string
               sshKey:
                 type: string
             required:
-            - flintlockURL
+            - hosts
             type: object
           status:
             description: MicrovmDatacenterConfigStatus defines the observed status

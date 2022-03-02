@@ -6,9 +6,15 @@ import (
 
 // MicrovmDatacenterConfigSpec defines the desired state of MicrovmDatacenterConfig.
 type MicrovmDatacenterConfigSpec struct {
-	FlintlockURL string `json:"flintlockURL"`
-	MicrovmProxy string `json:"microvmProxy,omitempty"`
-	SSHKey       string `json:"sshKey,omitempty"`
+	Hosts        []MicrovmHost `json:"hosts"`
+	MicrovmProxy string        `json:"microvmProxy,omitempty"`
+	SSHKey       string        `json:"sshKey,omitempty"`
+}
+
+// MicrovmHost represents a host that can run microvms
+type MicrovmHost struct {
+	Endpoint             string `json:"endpoint"`
+	ControlPlanedAllowed bool   `json:"controlplaneAllowed"`
 }
 
 // MicrovmDatacenterConfigStatus defines the observed status for MicrovmDatacenterConfig.

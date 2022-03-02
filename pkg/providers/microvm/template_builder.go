@@ -109,7 +109,7 @@ func buildTemplateMapCP(clusterSpec *cluster.Spec, datacenterSpec v1alpha1.Micro
 		"controlPlaneSshUsername":      controlPlaneMachineSpec.Users[0].Name,
 		"controlPlaneSshAuthorizedKey": controlPlaneMachineSpec.Users[0].SshAuthorizedKeys,
 		"kubeVipImage":                 "ghcr.io/kube-vip/kube-vip:latest", // TODO: get this value from the bundle once we add it
-		"flintlockurl":                 datacenterSpec.FlintlockURL,
+		"microvmHosts":                 datacenterSpec.Hosts,
 		"microvmProxy":                 datacenterSpec.MicrovmProxy,
 		"format":                       format,
 		"clusterSSHKey":                datacenterSpec.SSHKey,

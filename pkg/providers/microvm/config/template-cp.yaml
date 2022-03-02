@@ -34,9 +34,10 @@ spec:
     port: 6443
   placement:
     staticPool:
-      hosts:
-      - endpoint: {{.flintlockurl}}
-        controlplaneAllowed: true
+      hosts: {{- range $host := .microvmHosts}}
+      - endpoint: {{.Endpoint}}
+        controlplaneAllowed: {{ .ControlPlanedAllowed }}
+{{end}}
 {{- if (ne .clusterSSHKey "") }}
   sshPublicKey: {{ .clusterSSHKey }}
 {{- end }}

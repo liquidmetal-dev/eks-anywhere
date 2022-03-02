@@ -3,6 +3,7 @@ package microvm
 import (
 	"context"
 	_ "embed"
+	"errors"
 	"fmt"
 	"os"
 	"time"
@@ -84,7 +85,7 @@ func NewProvider(datacenterConfig *v1alpha1.MicrovmDatacenterConfig, machineConf
 func (p *provider) BootstrapClusterOpts() ([]bootstrapper.BootstrapClusterOption, error) {
 	env := map[string]string{}
 	if p.clusterConfig.Spec.ProxyConfiguration != nil {
-		noProxy := fmt.Sprintf("%s,%s", p.clusterConfig.Spec.ControlPlaneConfiguration.Endpoint.Host, p.datacenterConfig.Spec.FlintlockURL)
+		noProxy := fmt.Sprintf("%s,%s", p.clusterConfig.Spec.ControlPlaneConfiguration.Endpoint.Host, getHosts(p.datacenterConfig))
 		for _, s := range p.clusterConfig.Spec.ProxyConfiguration.NoProxy {
 			if s != "" {
 				noProxy += "," + s
@@ -125,6 +126,11 @@ func (p *provider) SetupAndValidateCreateCluster(ctx context.Context, clusterSpe
 	}
 	p.controlPlaneSshAuthKey = p.machineConfigs[p.clusterConfig.Spec.ControlPlaneConfiguration.MachineGroupRef.Name].Spec.Users[0].SshAuthorizedKeys[0]
 	p.workerSshAuthKey = p.machineConfigs[p.clusterConfig.Spec.WorkerNodeGroupConfigurations[0].MachineGroupRef.Name].Spec.Users[0].SshAuthorizedKeys[0]
+
+	if len(p.datacenterConfig.Spec.Hosts) == 0 {
+		return errors.New("you must supply at least 1 microvm host")
+	}
+
 	return nil
 }
 
@@ -306,9 +312,21 @@ func (p *provider) generateCAPISpecForCreate(ctx context.Context, cluster *types
 }
 
 func setEnvVars(datacenterConfig *v1alpha1.MicrovmDatacenterConfig) error {
-	if err := os.Setenv(hostEndPointKey, datacenterConfig.Spec.FlintlockURL); err != nil {
+	if err := os.Setenv(hostEndPointKey, getHosts(datacenterConfig)); err != nil {
 		return fmt.Errorf("unable to set %s: %v", hostEndPointKey, err)
 	}
 
 	return nil
+}
+
+func getHosts(datacenterConfig *v1alpha1.MicrovmDatacenterConfig) string {
+	hosts := ""
+	for i, host := range datacenterConfig.Spec.Hosts {
+		if i > 0 {
+			hosts = hosts + ","
+		}
+		hosts = hosts + host.Endpoint
+	}
+
+	return hosts
 }
